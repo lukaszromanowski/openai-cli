@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import openai
 import readline
-import os
+import argparse
 from termcolor import cprint
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-DEBUG = os.getenv("OPENAI_DEBUG_MODE")
+parser = argparse.ArgumentParser()
+parser.add_argument("--usage", action="store_true", default=False, help="Show token usage")
+ARGS = parser.parse_args()
 
 SESSION = [
   {"role": "system", "content": "You are a helpful assistant."},
 ]
+LAST_RESPONSE = {}
 
 def ask_gpt(question: str) -> str:
   generate_user_prompt(question)
@@ -21,33 +25,53 @@ def ask_gpt(question: str) -> str:
     temperature=0.5,
     messages=SESSION
   )
-  if DEBUG:
-    cprint('[debug]: {} tokens were used.'.format(response.usage.total_tokens), 'red')
+  store_response(response.to_dict_recursive())
+  if ARGS.usage:
+    cprint('[usage]: {} tokens were used.'.format(response.usage.total_tokens), 'red')
   answer = response.choices[0].message.content
   generate_assistant_prompt(answer)
   return answer
 
+def store_response(response: dict):
+  global LAST_RESPONSE
+  LAST_RESPONSE = response
+
 def generate_user_prompt(question: str):
+  global SESSION
   SESSION.append( {"role": "user", "content": question} )
 
 def generate_assistant_prompt(answer: str):
+  global SESSION
   SESSION.append( {"role": "assistant", "content": answer} )
 
 def main():
   print("Welcome to ChatGPT!")
-  cprint('(type "exit" to exit from conversation)', 'grey')
+  cprint("(type 'exit' to exit from conversation)", "grey")
+  cprint("(type 'clear' to clear session and start a new conversation)", "grey")
   while True:
     # Get user input
-    user_input = input('You: ')
+    user_input = input("You: ")
 
-    # Exit if user enters 'exit'
-    if user_input.lower() == 'exit':
+    # check if there is a cli command in the user input
+    cmd = user_input.lower()
+    if cmd == 'exit':
+      cprint("Bye bye!", "blue")
       break
+    elif cmd == 'clear':
+      cprint("Let's start a new conversation!", "blue")
+      del SESSION[1:]
+      continue
+    elif cmd == 'session':
+      cprint("[debug] {}".format(SESSION), "white", "on_grey")
+      continue
+    elif cmd == 'debug':
+      cprint("[debug] {}".format(LAST_RESPONSE), "white", "on_grey")
+      continue
 
     # Get GPT response
     gpt_response = ask_gpt(user_input)
 
     # Print GPT response
-    cprint('AI: {}'.format(gpt_response), 'green')
+    cprint("AI: {}".format(gpt_response), "green")
 
 main()
