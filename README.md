@@ -3,7 +3,7 @@
 
 ### usage
 ```
-usage: chat [-h] [--usage]
+usage: ./chat [-h] [--usage]
 
 optional arguments:
   -h, --help  show this help message and exit
