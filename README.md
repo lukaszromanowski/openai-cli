@@ -6,20 +6,25 @@ chat with OpenAI **ChatGPT** model
 
 ### usage
 ```
-usage: ./chat [-h] [--usage]
+usage: chat [-h] [--usage]
 
 optional arguments:
   -h, --help  show this help message and exit
-  --usage     show token usage
+  --usage     show usage instruction
 ```
 
 ### inline command
 
-`session` - print current session object
+
+`usage` - print last response token usage
+
+`session` - print current session array
 
 `debug` - print last response object
 
 `clear` - clear session (start a new conversation)
+
+`system: <your instruction>` - change system behavior
 
 `exit` - exit from conversation chat
 

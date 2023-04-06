@@ -25,7 +25,7 @@ def usage():
   cprint("(type 'usage' to see last response token usage)", "grey")
   cprint("(type 'session' to see current session array)", "grey")
   cprint("(type 'debug' to see last response object)", "grey")
-  cprint("(type 'sustem: <your instruction>' to change system behavior)", "grey")
+  cprint("(type 'system: <your instruction>' to change system behavior)", "grey")
 
 def ask_gpt(question: str) -> str:
   generate_user_prompt(question)
