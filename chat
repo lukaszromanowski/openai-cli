@@ -10,13 +10,22 @@ from termcolor import cprint
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--usage", action="store_true", default=False, help="Show token usage")
+parser.add_argument("--usage", action="store_true", default=False, help="show usage instruction")
 ARGS = parser.parse_args()
 
 SESSION = [
   {"role": "system", "content": "You are a helpful assistant."},
 ]
 LAST_RESPONSE = {}
+
+def usage():
+  print("Welcome to ChatGPT!")
+  cprint("(type 'exit' to exit from conversation)", "grey")
+  cprint("(type 'clear' to clear session and start a new conversation)", "grey")
+  cprint("(type 'usage' to see last response token usage)", "grey")
+  cprint("(type 'session' to see current session array)", "grey")
+  cprint("(type 'debug' to see last response object)", "grey")
+  cprint("(type 'sustem: <your instruction>' to change system behavior)", "grey")
 
 def ask_gpt(question: str) -> str:
   generate_user_prompt(question)
@@ -26,8 +35,6 @@ def ask_gpt(question: str) -> str:
     messages=SESSION
   )
   store_response(response.to_dict_recursive())
-  if ARGS.usage:
-    cprint('[usage]: {} tokens were used.'.format(response.usage.total_tokens), 'red')
   answer = response.choices[0].message.content
   generate_assistant_prompt(answer)
   return answer
@@ -44,10 +51,12 @@ def generate_assistant_prompt(answer: str):
   global SESSION
   SESSION.append( {"role": "assistant", "content": answer} )
 
+def generate_system_prompt(instruction: str):
+  global SESSION
+  SESSION.append( {"role": "system", "content": instruction} )
+
 def main():
-  print("Welcome to ChatGPT!")
-  cprint("(type 'exit' to exit from conversation)", "grey")
-  cprint("(type 'clear' to clear session and start a new conversation)", "grey")
+  usage()
   while True:
     # Get user input
     user_input = input("You: ")
@@ -61,11 +70,19 @@ def main():
       cprint("Let's start a new conversation!", "blue")
       del SESSION[1:]
       continue
+    elif cmd == 'usage':
+      cprint('[usage]: {} tokens were used.'.format(LAST_RESPONSE.get('usage',{}).get('total_tokens',0)), "white", "on_grey")
+      continue
     elif cmd == 'session':
-      cprint("[debug] {}".format(SESSION), "white", "on_grey")
+      cprint("[session] {}".format(SESSION), "white", "on_grey")
       continue
     elif cmd == 'debug':
       cprint("[debug] {}".format(LAST_RESPONSE), "white", "on_grey")
+      continue
+    elif cmd.startswith("system:"):
+      instruction = cmd.split("system:", 1)[1].strip()
+      cprint("Let's continue conversation with new system instruction: {}".format(instruction), "blue")
+      generate_system_prompt(instruction)
       continue
 
     # Get GPT response
@@ -74,4 +91,8 @@ def main():
     # Print GPT response
     cprint("AI: {}".format(gpt_response), "green")
 
-main()
+if ARGS.usage:
+  usage()
+  exit()
+else:
+  main()
