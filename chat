@@ -43,6 +43,13 @@ def store_response(response: dict):
   global LAST_RESPONSE
   LAST_RESPONSE = response
 
+def clear_prompt(force: bool = False):
+  global SESSION
+  if force:
+    del SESSION[:]
+  else:
+    del SESSION[1:]
+
 def generate_user_prompt(question: str):
   global SESSION
   SESSION.append( {"role": "user", "content": question} )
@@ -68,7 +75,7 @@ def main():
       break
     elif cmd == 'clear':
       cprint("Let's start a new conversation!", "blue")
-      del SESSION[1:]
+      clear_prompt()
       continue
     elif cmd == 'usage':
       cprint('[usage]: {} tokens were used.'.format(LAST_RESPONSE.get('usage',{}).get('total_tokens',0)), "white", "on_grey")
@@ -81,7 +88,8 @@ def main():
       continue
     elif cmd.startswith("system:"):
       instruction = cmd.split("system:", 1)[1].strip()
-      cprint("Let's continue conversation with new system instruction: {}".format(instruction), "blue")
+      cprint("Let's start new conversation with new system instruction: {}".format(instruction), "blue")
+      clear_prompt(True)
       generate_system_prompt(instruction)
       continue
 
