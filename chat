@@ -2,23 +2,26 @@
 # -*- coding: utf-8 -*-
 
 import os
-import openai
 import readline
 import argparse
+from openai import OpenAI
 from termcolor import cprint
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--usage", action="store_true", default=False, help="show usage instruction")
+parser.add_argument("--model", type=str, default="gpt-4o-mini", help="model to use")
+parser.add_argument("--question", type=str, default="", help="question to ask")
 ARGS = parser.parse_args()
 
 SESSION = [
   {"role": "system", "content": "You are a helpful assistant."},
 ]
 LAST_RESPONSE = {}
+LAST_BUDY_RESPONSE = {}
 
-def usage():
+def help(): 
   print("Welcome to ChatGPT!")
   cprint("(type 'exit' to exit from conversation)", "grey")
   cprint("(type 'clear' to clear session and start a new conversation)", "grey")
@@ -26,18 +29,37 @@ def usage():
   cprint("(type 'session' to see current session array)", "grey")
   cprint("(type 'debug' to see last response object)", "grey")
   cprint("(type 'system: <your instruction>' to change system behavior)", "grey")
+  cprint("(type 'budy' to get next question from Budy)", "grey")
+  cprint("(type 'ok' to use last Budy question as next my question to AI)", "grey")
 
 def ask_gpt(question: str) -> str:
   generate_user_prompt(question)
-  response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    temperature=0.5,
+  response = openai.chat.completions.create(
+    model=ARGS.model,
     messages=SESSION
   )
-  store_response(response.to_dict_recursive())
+  store_response(response)
   answer = response.choices[0].message.content
   generate_assistant_prompt(answer)
   return answer
+
+def ask_budy() -> str:
+  system_prompt = "Based on the dialogue so far, propose next question to the assistant."
+  dialogue = "\n".join([f"{m['role']}: {m['content']}" for m in SESSION])
+  response = openai.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+      {"role": "system", "content": system_prompt},
+      {"role": "user", "content": dialogue}
+    ]
+  ) 
+  store_budy_response(response)
+  answer = response.choices[0].message.content
+  return answer
+
+def store_budy_response(response: dict):
+  global LAST_BUDY_RESPONSE
+  LAST_BUDY_RESPONSE = response
 
 def store_response(response: dict):
   global LAST_RESPONSE
@@ -63,22 +85,30 @@ def generate_system_prompt(instruction: str):
   SESSION.append( {"role": "system", "content": instruction} )
 
 def main():
-  usage()
+  help()
   while True:
     # Get user input
-    user_input = input("You: ")
+    if ARGS.question:
+      user_input = ARGS.question
+      ARGS.question = ""
+      print("You: {}".format(user_input))
+    else:
+      user_input = input("You: ")
 
     # check if there is a cli command in the user input
     cmd = user_input.lower()
     if cmd == 'exit':
       cprint("Bye bye!", "blue")
       break
+    elif cmd == 'help':
+      help()
+      continue
     elif cmd == 'clear':
       cprint("Let's start a new conversation!", "blue")
       clear_prompt()
       continue
     elif cmd == 'usage':
-      cprint('[usage]: {} tokens were used.'.format(LAST_RESPONSE.get('usage',{}).get('total_tokens',0)), "white", "on_grey")
+      cprint('[usage]: {} tokens were used.'.format(LAST_RESPONSE.usage.total_tokens), "white", "on_grey")
       continue
     elif cmd == 'session':
       cprint("[session] {}".format(SESSION), "white", "on_grey")
@@ -92,15 +122,24 @@ def main():
       clear_prompt(True)
       generate_system_prompt(instruction)
       continue
+    elif cmd == 'budy':
+      # Get next question from Budy
+      budy_response = ask_budy()
+      cprint("Budy: {}".format(budy_response), "magenta")
+      continue
+    elif cmd == 'ok':
+      # use budy question as next my question to AI
+      user_input = LAST_BUDY_RESPONSE.choices[0].message.content
 
     # Get GPT response
+    cprint("Waiting for AI response...", "blue")
     gpt_response = ask_gpt(user_input)
 
     # Print GPT response
     cprint("AI: {}".format(gpt_response), "green")
 
 if ARGS.usage:
-  usage()
+  help()
   exit()
 else:
   main()
